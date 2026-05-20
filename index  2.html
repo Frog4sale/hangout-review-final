@@ -23,7 +23,7 @@
     }
 
     .page {
-      width: min(1100px, 92%);
+      width: min(1050px, 92%);
       margin: 0 auto;
       padding: 40px 0;
     }
@@ -155,47 +155,6 @@
       letter-spacing: -0.03em;
     }
 
-    .photo-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-
-    .photo-card {
-      overflow: hidden;
-    }
-
-    .photo-placeholder {
-      min-height: 230px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      text-align: center;
-      background: linear-gradient(135deg, rgba(255, 116, 185, 0.9), rgba(78, 205, 196, 0.9));
-    }
-
-    .photo-placeholder span {
-      padding: 12px 16px;
-      border-radius: 18px;
-      background: rgba(0, 0, 0, 0.25);
-      font-weight: 900;
-    }
-
-    .photo-card-content {
-      padding: 18px;
-    }
-
-    .photo-card-content h3 {
-      font-size: 22px;
-      margin-bottom: 6px;
-    }
-
-    .photo-card-content p {
-      color: rgba(255, 255, 255, 0.65);
-      font-size: 14px;
-    }
-
     .survey-layout {
       display: grid;
       grid-template-columns: 1fr 0.8fr;
@@ -237,10 +196,9 @@
       color: #10111f;
     }
 
-    textarea {
+    textarea,
+    input {
       width: 100%;
-      min-height: 220px;
-      resize: vertical;
       margin-top: 14px;
       padding: 16px;
       border-radius: 18px;
@@ -251,7 +209,13 @@
       outline: none;
     }
 
-    textarea::placeholder {
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+    }
+
+    textarea::placeholder,
+    input::placeholder {
       color: rgba(255, 255, 255, 0.4);
     }
 
@@ -277,6 +241,12 @@
       color: #ffd166;
     }
 
+    .small-note {
+      color: rgba(255,255,255,0.65);
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
     footer {
       margin-top: 28px;
       padding: 20px;
@@ -287,8 +257,7 @@
 
     @media (max-width: 850px) {
       .hero,
-      .survey-layout,
-      .photo-grid {
+      .survey-layout {
         grid-template-columns: 1fr;
       }
 
@@ -317,7 +286,7 @@
 
         <div class="hero-buttons">
           <a class="button" href="#survey">Start the Review</a>
-          <a class="button secondary" href="#evidence">View Evidence</a>
+          <a class="button secondary" href="#comments">Leave a Comment</a>
         </div>
       </div>
 
@@ -333,39 +302,6 @@
           </p>
         </div>
       </aside>
-    </section>
-
-    <h2 class="section-title" id="evidence">Evidence from the hangout</h2>
-    <section class="photo-grid">
-      <article class="panel photo-card">
-        <div class="photo-placeholder">
-          <span>Replace with Photo #1</span>
-        </div>
-        <div class="photo-card-content">
-          <h3>Exhibit A</h3>
-          <p>Proof that we left the house and survived the outside world.</p>
-        </div>
-      </article>
-
-      <article class="panel photo-card">
-        <div class="photo-placeholder">
-          <span>Replace with Photo #2</span>
-        </div>
-        <div class="photo-card-content">
-          <h3>Exhibit B</h3>
-          <p>A rare documented sighting of acceptable social behavior.</p>
-        </div>
-      </article>
-
-      <article class="panel photo-card">
-        <div class="photo-placeholder">
-          <span>Replace with Photo #3</span>
-        </div>
-        <div class="photo-card-content">
-          <h3>Exhibit C</h3>
-          <p>The vibes were present. The vibes had witnesses.</p>
-        </div>
-      </article>
     </section>
 
     <h2 class="section-title" id="survey">Mandatory survey</h2>
@@ -404,13 +340,16 @@
         </div>
       </div>
 
-      <div class="panel comments">
+      <div class="panel comments" id="comments">
         <h2>Comments Section</h2>
-        <p style="color: rgba(255,255,255,0.65); margin-top: 4px;">
+        <p class="small-note">
           Leave your final thoughts for the Department of Vibes.
         </p>
 
+        <input id="reviewerName" type="text" placeholder="Your name, nickname, or anonymous chaos goblin" />
+
         <textarea id="comment" placeholder="Example: 10/10 would witness your questionable decisions again."></textarea>
+
         <button class="submit-button" id="submitButton">Submit Official Review</button>
 
         <div class="result" id="resultBox">
@@ -426,6 +365,8 @@
   </main>
 
   <script>
+    const FORMSPREE_ENDPOINT = "https://formspree.io/f/xaqkelrw";
+
     const answers = {};
     const scoreElement = document.getElementById("score");
     const meterFill = document.getElementById("meterFill");
@@ -433,6 +374,7 @@
     const resultText = document.getElementById("resultText");
     const submitButton = document.getElementById("submitButton");
     const comment = document.getElementById("comment");
+    const reviewerName = document.getElementById("reviewerName");
 
     function updateScore() {
       const totalQuestions = 4;
@@ -460,7 +402,7 @@
       });
     });
 
-    submitButton.addEventListener("click", () => {
+    submitButton.addEventListener("click", async () => {
       const totalAnswered = Object.keys(answers).length;
 
       if (totalAnswered < 4) {
@@ -472,13 +414,45 @@
       const finalComment = comment.value.trim();
       const currentScore = scoreElement.textContent;
 
-      if (finalComment) {
-        resultText.textContent = `Final score: ${currentScore}/100. Your comment has been submitted: “${finalComment}”`;
-      } else {
-        resultText.textContent = `Final score: ${currentScore}/100. No comment was left, which is suspicious but accepted.`;
+      const formData = {
+        reviewer_name: reviewerName.value.trim() || "Anonymous",
+        q1_hang_out_again: answers.q1,
+        q2_made_you_laugh: answers.q2,
+        q3_vibes_acceptable: answers.q3,
+        q4_trusted_to_plan_again: answers.q4,
+        final_vibe_score: currentScore,
+        comment: finalComment || "No comment left"
+      };
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Submitting...";
+
+      try {
+        const response = await fetch(FORMSPREE_ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          resultText.textContent = `Final score: ${currentScore}/100. Your review has been submitted to the Department of Vibes.`;
+          resultBox.classList.add("show");
+          comment.value = "";
+          reviewerName.value = "";
+        } else {
+          resultText.textContent = "Something went wrong. The Department of Vibes is currently unavailable.";
+          resultBox.classList.add("show");
+        }
+      } catch (error) {
+        resultText.textContent = "Submission failed. Please try again later.";
+        resultBox.classList.add("show");
       }
 
-      resultBox.classList.add("show");
+      submitButton.disabled = false;
+      submitButton.textContent = "Submit Official Review";
     });
   </script>
 </body>
